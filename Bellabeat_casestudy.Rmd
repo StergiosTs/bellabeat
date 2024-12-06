@@ -1,0 +1,456 @@
+---
+title: "Bellabeat Case Study"
+author: "Stergios"
+date: "2024-09-12"
+output: html_document
+---
+## **How can a wellness company play it smart**
+
+```{r pressure, echo=FALSE, fig.cap=" ", out.width = '100%'}
+knitr::include_graphics("C://Users//User//Downloads//archive (3)//Bellabeatlogo.png")
+```
+
+
+### About the Company
+
+**Bellabeat** is a successful small company, but they have the potential to become a larger player in the global smart device market. Urška Sršen, cofounder and Chief Creative Officer of Bellabeat, believes that analyzing smart device fitness data could help unlock new growth opportunities for the company.
+
+
+### Business Task
+
+Analyze data from the FitBit fitness tracker to see how users interact with the FitBit app and determine trends to guide marketing strategy for the company.
+
+
+### Key questions for analysis
+
+1. What are some trends in smart device usage?
+2. How could these trends apply to Bellabeat customers?
+3. How could these trends help influence Bellabeat marketing strategy
+
+
+### Prepare the Data
+
+This Kaggle data set FitBit Fitness Tracker Data contains personal fitness tracker from thirty Fitbit users via Amazon Mechanical Turk between 03.12.2016-05.12.2016.
+
+* ROCCC Analysis
+  + Reliable — LOW — 30 responders are a small sample size and does not accurately reflect the entire population of female Fitbit users
+  + Original — LOW — Amazon Mechanical Turk is Third party data provider.
+  + Comprehensive — LOW — The dataset does not consist of data about gender, age, health conditions and it is not random. The data is biased against women. Low accuracy does not represent the case objectively.
+  + Current — LOW — 7-year-old data is not present
+  + Cited — LOW — Data obtained from an unidentified third party (Amazon Mechanical Murk)
+
+This data has limitations. The data was collected in 2016, eight years ago, and may not be actual and accurate.
+
+
+### Loading Packages
+
+-if not already installed-
+
++ install.packages("tidyverse")
++ install.packages("tidyr")
++ install.packages("janitor")
++ install.packages("dplyr")
++ install.packages("lubritate")
++ install.packages("ggplot2")
+
+```{r}
+library(tidyverse)
+library(tidyr)
+library(janitor)
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+
+```
+
+### Importing Data
+
+```{r}
+daily_activity <- read_csv("C://Users//User//Downloads//archive (3)//mturkfitbit_export_4.12.16-5.12.16//Fitabase Data 4.12.16-5.12.16//dailyActivity_merged.csv")
+
+sleep <- read_csv("C://Users//User//Downloads//archive (3)//mturkfitbit_export_4.12.16-5.12.16//Fitabase Data 4.12.16-5.12.16//sleepDay_merged.csv")
+```
+
+
+```{r}
+# Now we'll check that everything is ok with the View() and head() functions
+
+View(daily_activity)
+View(sleep)
+head(daily_activity)
+head(sleep)
+```
+##### At a first glance we see that column **ActivityDate** from character Date format needs to be converted into R date format. 
+
+
+### Cleaning Data
+
+```{r}
+# Check for any leading or trailing spaces
+
+daily_activity$ActivityDate <- trimws(daily_activity$ActivityDate)
+
+# Check for any unusual values
+
+unique(daily_activity$ActivityDate)
+
+```
+
+
+```{r}
+# Convert with locale set to English (US) to ensure proper interpretation
+
+daily_activity$ActivityDate <- as.Date(daily_activity$ActivityDate, format = "%m/%d/%Y", 
+                                       tryFormats = c("%m/%d/%Y"), locale = "en_US.UTF-8")
+
+# Verify the output
+
+head(daily_activity)
+```
+
+
+```{r}
+# Now we'll verify the conversions
+
+str(daily_activity$ActivityDate)
+str(sleep$SleepDay)
+head(daily_activity)
+head(sleep)
+```
+
+
+```{r}
+# Now we'll count the number of rows in each table
+
+nrow(daily_activity)
+nrow(sleep)
+```
+```{r}
+# Now we'll count the number of participants in each dataset
+
+n_distinct(daily_activity$Id)
+n_distinct(sleep$Id)
+```
+```{r}
+# Check for duplicates
+
+nrow(daily_activity[duplicated(daily_activity),])
+nrow(sleep[duplicated(sleep),])
+```
+```{r}
+# Remove duplicates
+
+sleep <- unique(sleep)
+
+# Check that duplicates have been removed
+
+nrow(sleep)
+
+```
+```{r}
+#Using separate() function function to split date and time into separate columns in the sleep dataframe.
+
+sleep_new <- sleep %>% 
+  separate(SleepDay, c("Date", "Time"), " ")
+View(sleep_new)
+```
+
+
+### Analyze the Data
+
+```{r}
+# Now we'll view the summary statistics for the dataframes
+
+daily_activity %>%
+  select(TotalSteps,
+         TotalDistance,
+         VeryActiveMinutes,
+         FairlyActiveMinutes,
+         LightlyActiveMinutes,
+         SedentaryMinutes,
+         Calories) %>%
+  summary()
+
+sleep_new %>%
+  select(TotalMinutesAsleep,
+         TotalTimeInBed) %>%
+  summary()
+```
+
+```{r}
+# Convert Date column from <chr> format to <Date> format
+
+sleep_new$Date = as.Date(sleep_new$Date, "%m/%d/%Y") 
+View(sleep_new)
+```
+
+
+```{r}
+# Exploring the day with the highest number of minutes asleep / Create new column with day of the week
+
+
+sleep_new$DayOfWeek <- weekdays(sleep_new$Date)
+
+# View the updated data frame
+
+View(sleep_new)
+```
+
+```{r}
+#Defining the day with the highest sleeping time
+
+sleep_new %>%
+  group_by(DayOfWeek) %>%
+  summarize(total_minutes_asleep = sum(TotalMinutesAsleep)) %>%
+  arrange(desc(total_minutes_asleep)) %>%
+  head(1)
+```
+
+
+##### **Observations**
+
+* The majority of the participants are lightly active.
+
+* An average user walks 5.490 km or 7638 steps a day. The CDC recommend that most adults aim for 10,000 steps per day. For most people, this is the equivalent of about 8 kilometers, or 5 miles.
+
+* An average user spends 991.2 minutes or 16.52 hours in 24-hour movement sedentarily. A little physical movement while awake, up to 10 hours a day without movement, can increase the risk of chronic diseases, including high cholesterol, blood pressure. Adults are advised to limit sedentary time to 8 hours or less.
+
+* The average of highly active minutes spent is 21.16 minutes, which is less then at least 30 minutes per day exercising intentionally.
+
+* The average number total sleep time is 419 minutes, or around 7 hours.
+
+* The average time spent in bed is 458 minutes or 7 hours 30 min.
+
+* The day with the highest number of sleeping time is Wednesday
+
+```{r}
+head(daily_activity$ActivityDate)
+head(sleep_new$Date)
+```
+```{r}
+# Convert both columns to Date format (assuming both should be Date only)
+
+daily_activity$ActivityDate <- as.Date(daily_activity$ActivityDate, format = "%m/%d/%Y")
+sleep_new$Date <- as.Date(sleep_new$Date, format = "%m/%d/%Y")
+
+```
+
+```{r}
+# Check common Id and Date combinations
+
+common_rows <- merge(daily_activity, sleep_new, by.x = c("Id", "ActivityDate"), by.y = c("Id", "Date"))
+head(common_rows)
+
+```
+
+
+```{r}
+# Unique Ids in both datasets
+
+unique_ids_daily <- unique(daily_activity$Id)
+unique_ids_sleep <- unique(sleep_new$Id)
+
+# Find common Ids between both datasets
+
+common_ids <- intersect(unique_ids_daily, unique_ids_sleep)
+common_ids
+
+```
+
+
+```{r}
+# Filter both datasets to keep only rows with common Ids
+
+daily_filtered <- daily_activity[daily_activity$Id %in% common_ids, ]
+sleep_filtered <- sleep_new[sleep_new$Id %in% common_ids, ]
+
+# Check the date ranges in both datasets
+
+range(daily_filtered$ActivityDate)
+range(sleep_filtered$Date)
+
+```
+
+
+```{r}
+# Merging Dataframes
+
+sleep_sedentary_correlation <- merge(daily_activity, sleep_new, by.x = c("Id", "ActivityDate"), by.y = c("Id", "Date"))
+sleep_sedentary_cor <- subset(sleep_sedentary_correlation, select = c("Id", "ActivityDate", "TotalTimeInBed", "TotalMinutesAsleep", "SedentaryMinutes"))
+
+View(sleep_sedentary_cor)
+```
+
+
+### Share the Data
+
+```{r}
+# Create a visual showing the total number of minutes asleep for each day of the week
+
+sleep_new %>%
+  group_by(DayOfWeek) %>%
+  summarize(total_minutes_asleep = sum(TotalMinutesAsleep)) %>%
+  mutate(percent_of_total = round(total_minutes_asleep / sum(total_minutes_asleep) * 100,1 )) %>%
+  ggplot(aes(x = DayOfWeek, y = total_minutes_asleep)) +
+  geom_col(fill = "cadetblue4") +
+  geom_text(aes(label = paste0(percent_of_total, "%")), vjust = -0.5)+
+  labs(x = "Day of Week", y = "Total Minutes Asleep",
+       title = "Total Minutes Asleep by Day of Week")
+
+```
+
+
+
+```{r}
+
+
+# Step 1: Add a new column to indicate the day of the week
+daily_activity <- daily_activity %>%
+  mutate(DayOfWeek = weekdays(ActivityDate))
+
+# Step 2: Summarize total activity (e.g., TotalSteps) for each day of the week
+activity_by_day <- daily_activity %>%
+  group_by(DayOfWeek) %>%
+  summarize(TotalSteps = sum(TotalSteps, na.rm = TRUE),
+            TotalActiveMinutes = sum(VeryActiveMinutes + FairlyActiveMinutes + LightlyActiveMinutes, na.rm = TRUE)) %>%
+  arrange(desc(TotalSteps)) # Sorting to see the highest activity
+
+# Step 3: Find the day with the most total steps
+most_active_day_steps <- activity_by_day %>%
+  filter(TotalSteps == max(TotalSteps)) %>%
+  select(DayOfWeek, TotalSteps)
+
+# Step 4: Find the day with the most total active minutes
+most_active_day_minutes <- activity_by_day %>%
+  filter(TotalActiveMinutes == max(TotalActiveMinutes)) %>%
+  select(DayOfWeek, TotalActiveMinutes)
+
+# Display results
+print("Day with the most steps:")
+most_active_day_steps
+
+print("Day with the most active minutes:")
+most_active_day_minutes
+
+```
+
+
+```{r}
+
+# Check that the daily_activity dataframe already has a DayOfWeek column
+# We run this step again
+daily_activity <- daily_activity %>%
+  mutate(DayOfWeek = weekdays(ActivityDate))
+
+# Summarize the total steps and active minutes by day of the week
+activity_by_day <- daily_activity %>%
+  group_by(DayOfWeek) %>%
+  summarize(
+    TotalSteps = sum(TotalSteps, na.rm = TRUE),
+    TotalActiveMinutes = sum(VeryActiveMinutes + FairlyActiveMinutes + LightlyActiveMinutes, na.rm = TRUE)
+  )
+
+# Create ordered factors for days of the week for correct plotting order
+activity_by_day$DayOfWeek <- factor(activity_by_day$DayOfWeek, 
+                                    levels = c("Monday", "Tuesday", "Wednesday", "Thursday", 
+                                               "Friday", "Saturday", "Sunday"))
+
+# Plot for Total Steps by Day of the Week
+ggplot(activity_by_day, aes(x = DayOfWeek, y = TotalSteps, fill = DayOfWeek)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Total Steps by Day of the Week",
+       x = "Day of the Week", y = "Total Steps") +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+# Plot for Total Active Minutes by Day of the Week
+ggplot(activity_by_day, aes(x = DayOfWeek, y = TotalActiveMinutes, fill = DayOfWeek)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Total Active Minutes by Day of the Week",
+       x = "Day of the Week", y = "Total Active Minutes") +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+```
+
+##### According to the barplot, the day with the most active minutes and most total steps is Tuesday.
+
+
+
+```{r}
+# Now we'll explore the relationship between Sedentary Time & Time Asleep
+
+ggplot(data= sleep_sedentary_cor, aes(x=SedentaryMinutes, y=TotalMinutesAsleep)) + 
+  geom_point(colour="Chocolate1") + geom_smooth(color = "cadetblue4")+
+  labs(title="Correlation Between Sedentary Time and Time Asleep", x="Sedentary Time (minutes)", y="Time Asleep (minutes)")
+```
+
+
+```{r}
+#calculate the correlation index between sedentary time and time asleep
+
+cor(sleep_sedentary_cor$SedentaryMinutes, sleep_sedentary_cor$TotalMinutesAsleep)
+```
+##### Value of -0.6 indicating a negative correlation (one variable increases as the other decreases) between total time asleep and sedatives minutes.
+
+
+```{r}
+#Determining the correlation between total steps and calories 
+
+ggplot(data= daily_activity, aes(x=TotalSteps, y=Calories)) + 
+  geom_point(color="Chocolate1") + 
+  geom_smooth(color = "cadetblue4")+
+  labs(title="Relationship Between Steps and Calories", x="Steps", y="Calories burned")
+```
+
+
+##### According to the scatterplot, there is an obvious positive correlation between the total number of steps and calories: the more steps taken the greater number of calories burned.
+
+
+```{r}
+# Now we'll explore the relationship between Total Minutes Asleep & Total Time in Bed
+
+ggplot(data=sleep, aes(x=TotalMinutesAsleep, y=TotalTimeInBed)) + 
+  geom_point()+ labs(title="Total Minutes Asleep vs. Total Time in Bed")
+```
+
+
+##### The relationship between Total Minutes Asleep and Total Time in Bed looks linear. So if the Bellabeat users want to improve their sleep, we should consider using notification to go to sleep.
+
+
+
+### Act Phase
+
+##### After analyzing FitBit Fitness Tracker Data, we'll provide observations and suggestions based on the analysis.
+
+*Based on the findings, here are some targeted marketing suggestions for Bellabeat:
+
+1. Promote a "10,000 Steps Challenge" Campaign:
+Campaign Focus: Encourage users to increase their daily step count to meet the recommended 10,000 steps per day. Use gamification and rewards within the Bellabeat app, like badges and points, for users who consistently hit their daily step goals.
+Marketing Channels: Social media, push notifications in the Bellabeat app, and email newsletters.
+
+2. Educational Content on Reducing Sedentary Behavior:
+Content Strategy: Share tips on how to break up long periods of sitting with small bursts of activity. Include short workout routines or "stretch reminders" in the Bellabeat app. Provide educational articles and videos about the risks associated with prolonged sedentary behavior.
+Marketing Channels: In-app notifications, blog posts, and YouTube videos.
+
+3. "Move More" Campaign Focused on Increasing Active Minutes:
+Campaign Focus: Highlight the benefits of getting at least 30 minutes of physical activity each day. Promote using the Bellabeat app to set personalized daily active minute goals and track progress. Create content around quick and effective workouts that can be done at home.
+Marketing Channels: Social media, fitness influencers, and the Bellabeat app.
+
+4. "Sleep Well" Wednesdays Campaign:
+Campaign Focus: Given that Wednesday has the highest average sleep time, promote a "Sleep Well Wednesdays" campaign encouraging users to prioritize their sleep. Provide tips for improving sleep quality and relaxation techniques. Promote the use of the Bellabeat app's sleep tracking and mindfulness features.
+Marketing Channels: In-app push notifications, social media posts, and email marketing.
+
+5. Personalized Health and Wellness Plans:
+Feature Focus: Use Bellabeat's membership program to offer personalized health and wellness plans based on user data. This can include customized step goals, sleep improvement strategies, and active minute targets.
+Marketing Channels: App onboarding, email marketing, and personalized push notifications.
+
+6. Partner with Health and Fitness Influencers:
+Collaboration Strategy: Partner with influencers to promote the importance of reducing sedentary behavior, meeting daily step goals, and improving sleep quality. Influencers can share their own experiences using Bellabeat products to track and improve their wellness.
+Marketing Channels: Instagram, YouTube, and fitness blogs.
+
+7. Interactive Community Challenges:
+Engagement Focus: Host monthly or weekly community challenges within the Bellabeat app. For example, a "Weekday Warrior Challenge" could encourage users to increase their physical activity levels on weekdays.
+Marketing Channels: In-app challenges, social media groups, and community newsletters.
+
+By focusing on these targeted strategies, Bellabeat can encourage users to adopt healthier habits, engage more deeply with the app's features, and position its products as essential tools for improving overall wellness
